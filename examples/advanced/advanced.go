@@ -15,9 +15,15 @@ import (
 	imageserver_cache "github.com/pierrre/imageserver/cache"
 	imageserver_cache_memory "github.com/pierrre/imageserver/cache/memory"
 	imageserver_cache_redis "github.com/pierrre/imageserver/cache/redis"
-	imageserver_graphicsmagick "github.com/pierrre/imageserver/graphicsmagick"
 	imageserver_http "github.com/pierrre/imageserver/http"
-	imageserver_http_graphicsmagick "github.com/pierrre/imageserver/http/graphicsmagick"
+	imageserver_http_nfntresize "github.com/pierrre/imageserver/http/nfntresize"
+	imageserver_native "github.com/pierrre/imageserver/native"
+	_ "github.com/pierrre/imageserver/native/bmp"
+	_ "github.com/pierrre/imageserver/native/gif"
+	_ "github.com/pierrre/imageserver/native/jpeg"
+	imageserver_native_nfntresize "github.com/pierrre/imageserver/native/nfntresize"
+	_ "github.com/pierrre/imageserver/native/png"
+	_ "github.com/pierrre/imageserver/native/tiff"
 	imageserver_testdata "github.com/pierrre/imageserver/testdata"
 )
 
@@ -86,13 +92,15 @@ func newImageHTTPHandler() http.Handler {
 func newParser() imageserver_http.Parser {
 	return &imageserver_http.ListParser{
 		&imageserver_http.SourceParser{},
-		&imageserver_http_graphicsmagick.Parser{},
+		&imageserver_http_nfntresize.Parser{},
+		&imageserver_http.FormatParser{},
+		&imageserver_http.QualityParser{},
 	}
 }
 
 func newServer() imageserver.Server {
 	server := newServerTestData()
-	server = newServerGraphicsMagick(server)
+	server = newServerNative(server)
 	server = newServerLimit(server)
 	server = newServerCache(server)
 	return server
@@ -102,17 +110,10 @@ func newServerTestData() imageserver.Server {
 	return imageserver_testdata.Server
 }
 
-func newServerGraphicsMagick(server imageserver.Server) imageserver.Server {
-	return &imageserver_graphicsmagick.Server{
-		Server:     server,
-		Executable: "gm",
-		Timeout:    time.Duration(10 * time.Second),
-		AllowedFormats: []string{
-			"jpeg",
-			"png",
-			"bmp",
-			"gif",
-		},
+func newServerNative(server imageserver.Server) imageserver.Server {
+	return &imageserver_native.Server{
+		Server:    server,
+		Processor: &imageserver_native_nfntresize.Processor{},
 	}
 }
 
@@ -155,5 +156,5 @@ func newCacheRedis() imageserver_cache.Cache {
 }
 
 func newCacheMemory() imageserver_cache.Cache {
-	return imageserver_cache_memory.New(10 * 1024 * 1024)
+	return imageserver_cache_memory.New(100 * 1024 * 1024)
 }
